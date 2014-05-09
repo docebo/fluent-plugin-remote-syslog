@@ -55,7 +55,6 @@ class SyslogOutput < Fluent::Output
                          end
       packet = @packet.dup
       packet.content = record['severity'] + ' - ' + record['message']
-      $stderr.puts record['message']
       @socket.send(packet.assemble, 0, @remote_syslog, @port)
 	}
   end
