@@ -49,9 +49,9 @@ class SyslogOutput < Fluent::Output
       @packet.facility = 'user'
       @packet.severity = 'debug'
       @packet.tag      = if tag_key 
-                            record[tag_key].gsub(/[\[\]]/,'')
+                            record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          else
-                            tag
+                            tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          end
       packet = @packet.dup
       packet.content = record['severity'] + ' - ' + record['message']
