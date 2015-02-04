@@ -62,10 +62,8 @@ class SyslogOutput < Fluent::Output
     es.each {|time,record|
       @packet.hostname = hostname
       if @use_use_record
-        record['facility'] |= @facilty
-        record['severity'] |= @severity
-        @packet.facility = record['facility']
-        @packet.severity = record['severity']
+        @packet.facility = record['facility'] || @facilty
+        @packet.severity = record['severity'] || @severity
       else
         @packet.facility = @facilty
         @packet.severity = @severity
