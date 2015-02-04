@@ -32,6 +32,8 @@ class SyslogOutput < Fluent::Output
     super
     if conf['proto'] == 'udp'
       @socket = UDPSocket.new
+    else
+      @socket = create_tcp_socket(conf['remote_syslog'], conf['port'])
     end
     @packet = SyslogProtocol::Packet.new
     if remove_tag_prefix = conf['remove_tag_prefix']
@@ -42,6 +44,20 @@ class SyslogOutput < Fluent::Output
     @use_record = conf['use_record']
     @proto = conf['proto']
     @use_record = conf['use_record']
+  end
+
+  def create_tcp_socket(host, port)
+    begin
+      socket = TCPSocket.new(host, port)
+      secs = Integer(1)
+      usecs = Integer((1 - secs) * 1_000_000)
+      optval = [secs, usecs].pack("l_2")
+      socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
+    rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError => e
+      log.warn "out:syslog: failed to open tcp socket  #{@remote_syslog}:#{@port} :#{e}"
+      socket = nil
+    end
+    socket
   end
 
   # This method is called when starting.
@@ -79,9 +95,22 @@ class SyslogOutput < Fluent::Output
       if @proto == 'udp'
         @socket.send(packet.assemble, 0, @remote_syslog, @port)
       else
-        sock = TCPSocket.new(@remote_syslog, @port)
-        sock.write packet.assemble + "\n"
-        sock.flush
+        begin
+          if not @socket
+            @socket = create_tcp_socket(@remote_syslog, @port)
+          end
+          if @socket
+            begin
+              @socket.write packet.assemble + "\n"
+              @socket.flush
+            rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError => e
+              log.warn "out:syslog: connection error by #{@remote_syslog}:#{@port} :#{e}"
+              @socket = nil
+            end
+          else
+            log.warn "out:syslog: Socket connection couldn't be reestablished"
+          end
+        end
       end
 	}
   end
