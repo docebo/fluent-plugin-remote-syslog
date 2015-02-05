@@ -1,9 +1,9 @@
 require 'fluent/mixin/config_placeholders'
 
-class SyslogOutput < Fluent::Output
+class SyslogBufferedOutput < Fluent::Output
   # First, register the plugin. NAME is the name of this plugin
   # and identifies the plugin in the configuration file.
-  Fluent::Plugin.register_output('syslog', self)
+  Fluent::Plugin.register_output('syslog_buffered', self)
 
   # This method is called before starting.
 
@@ -25,10 +25,10 @@ class SyslogOutput < Fluent::Output
 
   def configure(conf)
     super
-    @socket = UDPSocket.new
+      @socket = create_tcp_socket(conf['remote_syslog'], conf['port'])
     @packet = SyslogProtocol::Packet.new
     if remove_tag_prefix = conf['remove_tag_prefix']
-        @remove_tag_prefix = Regexp.new('^' + Regexp.escape(remove_tag_prefix))
+      @remove_tag_prefix = Regexp.new('^' + Regexp.escape(remove_tag_prefix))
     end
     @facilty = conf['facility']
     @severity = conf['severity']
@@ -36,6 +36,19 @@ class SyslogOutput < Fluent::Output
     @use_record = conf['use_record']
   end
 
+  def create_tcp_socket(host, port)
+    begin
+      socket = TCPSocket.new(host, port)
+      secs = Integer(1)
+      usecs = Integer((1 - secs) * 1_000_000)
+      optval = [secs, usecs].pack("l_2")
+      socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
+    rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError => e
+      log.warn "out:syslog: failed to open tcp socket  #{@remote_syslog}:#{@port} :#{e}"
+      socket = nil
+    end
+    socket
+  end
 
   # This method is called when starting.
   def start
@@ -62,15 +75,30 @@ class SyslogOutput < Fluent::Output
         @packet.severity = @severity
       end
 
-      @packet.tag      = if tag_key 
-                            record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
+      @packet.tag      = if tag_key
+                           record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          else
-                            tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
+                           tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          end
       packet = @packet.dup
       packet.content = record['message']
-        @socket.send(packet.assemble, 0, @remote_syslog, @port)
-	}
+      begin
+        if not @socket
+          @socket = create_tcp_socket(@remote_syslog, @port)
+        end
+        if @socket
+          begin
+            @socket.write packet.assemble + "\n"
+            @socket.flush
+          rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError => e
+            log.warn "out:syslog: connection error by #{@remote_syslog}:#{@port} :#{e}"
+            @socket = nil
+          end
+        else
+          log.warn "out:syslog: Socket connection couldn't be reestablished"
+        end
+      end
+    }
   end
 end
 
