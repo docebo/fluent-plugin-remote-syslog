@@ -39,10 +39,12 @@ class SyslogOutput < Fluent::Output
 
   # This method is called when starting.
   def start
+    super
   end
 
   # This method is called when shutting down.
   def shutdown
+    super
   end
 
   # This method is called when an event reaches Fluentd.
