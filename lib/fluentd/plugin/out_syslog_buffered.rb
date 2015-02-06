@@ -22,6 +22,7 @@ module Fluent
       super
       require 'socket'
       require 'syslog_protocol'
+      require 'timeout'
     end
 
     def configure(conf)
@@ -43,12 +44,19 @@ module Fluent
 
     def create_tcp_socket(host, port)
       begin
+        Timeout.timeout(10) do
+          begin
+            socket = TCPSocket.new(host, port)
+          rescue Errno::ENETUNREACH
+            retry
+          end
+        end
         socket = TCPSocket.new(host, port)
         secs = Integer(1)
         usecs = Integer((1 - secs) * 1_000_000)
         optval = [secs, usecs].pack("l_2")
         socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
-      rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError => e
+      rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, OpenSSL::SSL::SSLError, Timeout::Error => e
         log.warn "out:syslog: failed to open tcp socket  #{@remote_syslog}:#{@port} :#{e}"
         socket = nil
       end
