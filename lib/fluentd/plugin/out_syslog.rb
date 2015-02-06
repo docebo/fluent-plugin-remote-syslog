@@ -15,6 +15,7 @@ class SyslogOutput < Fluent::Output
   config_param :facility, :string, :default => 'user'
   config_param :severity, :string, :default => 'debug'
   config_param :use_record, :string, :default => nil
+  config_param :payload_key, :string, :default => 'message'
 
 
   def initialize
@@ -33,7 +34,7 @@ class SyslogOutput < Fluent::Output
     @facilty = conf['facility']
     @severity = conf['severity']
     @use_record = conf['use_record']
-    @use_record = conf['use_record']
+    @payload_key = conf['payload_key']
   end
 
 
@@ -70,7 +71,7 @@ class SyslogOutput < Fluent::Output
                             tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          end
       packet = @packet.dup
-      packet.content = record['message']
+      packet.content = record[@payload_key]
         @socket.send(packet.assemble, 0, @remote_syslog, @port)
 	}
   end
