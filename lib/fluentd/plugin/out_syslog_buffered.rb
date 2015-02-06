@@ -81,6 +81,7 @@ module Fluent
     end
 
     def send_to_syslog(tag, time, record)
+      tag = tag.sub(@remove_tag_prefix, '') if @remove_tag_prefix
       @packet.hostname = hostname
       if @use_record
         @packet.facility = record['facility'] || @facilty

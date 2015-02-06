@@ -54,6 +54,7 @@ class SyslogOutput < Fluent::Output
   # 'chain' is an object that manages transactions. Call 'chain.next' at
   # appropriate points and rollback if it raises an exception.
   def emit(tag, es, chain)
+    tag = tag.sub(@remove_tag_prefix, '') if @remove_tag_prefix
     chain.next
     es.each {|time,record|
       @packet.hostname = hostname
