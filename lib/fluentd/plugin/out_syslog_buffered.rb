@@ -90,7 +90,7 @@ module Fluent
         @packet.facility = @facilty
         @packet.severity = @severity
       end
-
+      @packet.time = Time.parse(record['time']) || Time.now
       @packet.tag      = if tag_key
                            record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          else
