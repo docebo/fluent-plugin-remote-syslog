@@ -27,6 +27,9 @@ module Fluent
 
     def configure(conf)
       super
+      if not conf['remote_syslog']
+        raise Fluent::ConfigError.new("remote syslog required")
+      end
         @socket = create_tcp_socket(conf['remote_syslog'], conf['port'])
       @packet = SyslogProtocol::Packet.new
       if remove_tag_prefix = conf['remove_tag_prefix']
@@ -90,7 +93,12 @@ module Fluent
         @packet.facility = @facilty
         @packet.severity = @severity
       end
-      @packet.time = Time.parse(record['time']) || Time.now
+      if record['time']
+        time = Time.parse(record['time'])
+      else
+        time = Time.now
+      end
+      @packet.time = time
       @packet.tag      = if tag_key
                            record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                          else
@@ -120,15 +128,16 @@ module Fluent
 
 
   end
-end
 
-class Time
-  def timezone(timezone = 'UTC')
-    old = ENV['TZ']
-    utc = self.dup.utc
-    ENV['TZ'] = timezone
-    output = utc.localtime
-    ENV['TZ'] = old
-    output
+  class Time
+    def timezone(timezone = 'UTC')
+      old = ENV['TZ']
+      utc = self.dup.utc
+      ENV['TZ'] = timezone
+      output = utc.localtime
+      ENV['TZ'] = old
+      output
+    end
   end
 end
+
