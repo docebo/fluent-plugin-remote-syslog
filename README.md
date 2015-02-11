@@ -32,3 +32,8 @@ Both plugins have the same configuration options:
 </match>
 ```
 
+
+Contributors:
+
+* Andrea Spoldi 
+* [deathowl](http://github.com/deathowl)
