@@ -133,6 +133,6 @@ class SyslogOutputTest < Test::Unit::TestCase
     assert_equal 0, d1.emits.size
 
   end
-  
+
 
 end

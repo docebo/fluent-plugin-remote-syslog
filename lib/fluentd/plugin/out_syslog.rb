@@ -39,6 +39,9 @@ module Fluent
       @severity = conf['severity']
       @use_record = conf['use_record']
       @payload_key = conf['payload_key']
+      if not @payload_key
+        @payload_key = "message"
+      end
     end
 
 
@@ -82,7 +85,7 @@ module Fluent
                            end
         packet = @packet.dup
         packet.content = record[@payload_key]
-          @socket.send(packet.assemble, 0, @remote_syslog, @port)
+        @socket.send(packet.assemble, 0, @remote_syslog, @port)
     }
     end
   end
