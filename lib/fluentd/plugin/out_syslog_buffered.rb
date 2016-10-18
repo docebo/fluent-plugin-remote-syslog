@@ -38,7 +38,7 @@ module Fluent
       @facilty = conf['facility']
       @severity = conf['severity']
       @use_record = conf['use_record']
-      @oayload_key = conf['payload_key']
+      @payload_key = conf['payload_key']
       if not @payload_key
         @payload_key = "message"
       end
