@@ -38,6 +38,7 @@ module Fluent
       @facilty = conf['facility']
       @severity = conf['severity']
       @use_record = conf['use_record']
+      @cee_record = conf['cee_record']
       @payload_key = conf['payload_key']
       if not @payload_key
         @payload_key = "message"
@@ -84,7 +85,11 @@ module Fluent
                               tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
                            end
         packet = @packet.dup
-        packet.content = record[@payload_key]
+        if @cee_record
+          packet.content = "@cee:" + record.to_json
+        else
+          packet.content = record[@payload_key]
+        end
         @socket.send(packet.assemble, 0, @remote_syslog, @port)
     }
     end
