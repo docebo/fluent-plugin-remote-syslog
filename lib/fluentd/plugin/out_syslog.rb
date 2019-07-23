@@ -78,11 +78,15 @@ module Fluent
           time = Time.now
         end
         @packet.time = time
-        @packet.tag      = if tag_key
-                              record[tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
-                           else
-                              tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
-                           end
+        @packet.tag = if @tag_key
+                        begin
+                          record[@tag_key][0..31].gsub(/[\[\]]/,'') # tag is trimmed to 32 chars for syslog_protocol gem compatibility
+                        rescue
+                          tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
+                        end
+                      else
+                          tag[0..31] # tag is trimmed to 32 chars for syslog_protocol gem compatibility
+                      end
         packet = @packet.dup
         packet.content = record[@payload_key]
         @socket.send(packet.assemble, 0, @remote_syslog, @port)
